@@ -27,21 +27,33 @@
     <string name="details_no_trailers">There is no videos</string>
     <string name="details_vote_average_max">/10</string>
 
-    <!-- Strings for movies sort order in settings_main.xml -->
-    <string name="settings_sort_order_label">Sort by</string>
-    <string name="settings_sort_order_key" translatable="false">sort order</string>
-    <string name="settings_sort_order_by_default" translatable="false">@string/settings_most_popular_value</string>
+
+    <!-- Toast message in Details Activity when current movie has been successfully added to favourites -->
+    <string name="details_add_movie_successful">was added to favourites</string>
+    <!-- Toast message in Details Activity when current movie has failed to be added to favourites -->
+    <string name="details_add_movie_failed">Error while adding movie to favourites</string>
+
+    <!-- Toast message in Details Activity when current movie has failed to be removed from favourites-->
+    <string name="details_remove_movie_failed">Error with removing movie from favourites</string>
+
+    <!-- Toast message in Details Activity when current movie was successfully removed from favourites-->
+    <string name="details_remove_movie_successful">was removed from favourites</string>
+
+    <!-- Strings for movies sort order preferences_main.xml -->
+    <string name="preferences_sort_order_label">Sort by</string>
+    <string name="preferences_sort_order_key" translatable="false">sort_order</string>
+    <string name="preferences_sort_order_by_default" translatable="false">@string/preferences_most_popular_value</string>
 
     <!-- Labels for sort by most popular option -->
-    <string name="settings_most_popular_label">Most popular movies</string>
-    <string name="settings_most_popular_value" translatable="false">popular?</string>
+    <string name="preferences_most_popular_label">Most popular movies</string>
+    <string name="preferences_most_popular_value" translatable="false">popular?</string>
 
     <!-- Labels for sort by top rated option -->
-    <string name="settings_top_rated_label">Top rated movies</string>
-    <string name="settings_top_rated_value" translatable="false">top_rated?</string>
+    <string name="preferences_top_rated_label">Top rated movies</string>
+    <string name="preferences_top_rated_value" translatable="false">top_rated?</string>
 
     <!-- Labels for sort by favourites option -->
-    <string name="settings_favourites_label">Favourites movies</string>
-    <string name="settings_favourites_value" translatable="false">favourites</string>
+    <string name="preferences_favourites_label">Favourites</string>
+    <string name="preferences_favourites_value" translatable="false">favourites</string>
 
 </resources>

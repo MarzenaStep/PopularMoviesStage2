@@ -7,6 +7,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.Loader;
+import android.database.Cursor;
 import android.databinding.DataBindingUtil;
 import android.example.com.popularmovies2.BuildConfig;
 import android.example.com.popularmovies2.R;
@@ -55,6 +56,9 @@ public class DetailsActivity extends AppCompatActivity implements TrailerAdapter
     //This constant String will be used tp store reviews list
     private static final String REVIEWS_KEY = "reviews";
 
+    //This constant String will be used to store favourite Toggle Button state
+    private static final String FAVOURITE_KEY = "favourites";
+
     private Movie selectedMovie;
     //Declare an ActivityDetailsBinding field called mDetailsBinding
     private ActivityDetailsBinding detailsBinding;
@@ -70,7 +74,7 @@ public class DetailsActivity extends AppCompatActivity implements TrailerAdapter
     private ReviewAdapter reviewAdapter;
     private LinearLayoutManager trailersLayoutManager;
     private LinearLayoutManager reviewsLayoutManager;
-    private String movieId;
+    private String movieIdAsString;
     private static final String API_KEY = BuildConfig.MY_MOVIE_DB_API_KEY;
     private String trailerUrl;
     private String reviewUrl;
@@ -85,9 +89,9 @@ public class DetailsActivity extends AppCompatActivity implements TrailerAdapter
         public Loader<List<Review>> onCreateLoader(int i, Bundle bundle) {
             // Create a new loader for the given URL
             Log.i(LOG_TAG, "TEST: onCreateLoader() called ...");
-            movieId = String.valueOf(selectedMovie.getId());
+            movieIdAsString = String.valueOf(selectedMovie.getId());
             Log.e(LOG_TAG, "This is the movie id");
-            reviewUrl = BASE_MOVIE_DB + movieId + "/reviews?api_key=" + API_KEY;
+            reviewUrl = BASE_MOVIE_DB + movieIdAsString + "/reviews?api_key=" + API_KEY;
             Log.e(LOG_TAG, "This is review final URL");
             return new ReviewLoader(getApplicationContext(), reviewUrl);
         }
@@ -115,9 +119,9 @@ public class DetailsActivity extends AppCompatActivity implements TrailerAdapter
         public Loader<List<Trailer>> onCreateLoader(int loaderId, Bundle bundle) {
             // Create a new loader for the given URL
             Log.i(LOG_TAG, "TEST: onCreateLoader() called ...");
-            movieId = String.valueOf(selectedMovie.getId());
+            movieIdAsString = String.valueOf(selectedMovie.getId());
             Log.e(LOG_TAG, "This is the movie id");
-            trailerUrl = BASE_MOVIE_DB + movieId + "/videos?api_key=" + API_KEY;
+            trailerUrl = BASE_MOVIE_DB + movieIdAsString + "/videos?api_key=" + API_KEY;
             Log.e(LOG_TAG, "This is movie final URL");
             return new TrailerLoader(getApplicationContext(), trailerUrl);
         }
@@ -150,7 +154,7 @@ public class DetailsActivity extends AppCompatActivity implements TrailerAdapter
 
         // To access our database, we instantiate our subclass of SQLiteOpenHelper
         // and pass the context, which is the current activity.
-       movieDbHelper= new MovieDbHelper(this);
+        movieDbHelper = new MovieDbHelper(this);
 
         /*
          * If savedInstanceState is not null, that means Activity is not being started for the
@@ -165,6 +169,9 @@ public class DetailsActivity extends AppCompatActivity implements TrailerAdapter
                 trailersList = savedInstanceState.getParcelableArrayList(TRAILERS_KEY);
             } else if (savedInstanceState.containsKey(REVIEWS_KEY)) {
                 reviewsList = savedInstanceState.getParcelableArrayList(REVIEWS_KEY);
+            } else if (savedInstanceState.containsKey(FAVOURITE_KEY)) {
+
+
             }
         }
 
@@ -183,7 +190,20 @@ public class DetailsActivity extends AppCompatActivity implements TrailerAdapter
         detailsBinding.rvReview.setHasFixedSize(true);
         detailsBinding.rvTrailers.setNestedScrollingEnabled(false);
         detailsBinding.rvReview.setNestedScrollingEnabled(false);
-        detailsBinding.tbFavourites.setChecked(false);
+        detailsBinding.tbFavourites.setBackgroundDrawable(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_favorite_border_black_24dp));
+        final Cursor favouritesCursor = getContentResolver().query(
+                MovieEntry.CONTENT_URI,
+                null,
+                MovieEntry.COLUMN_MOVIE_ID
+                        + " = " + selectedMovie.getId(),
+                null,
+                null);
+
+        assert favouritesCursor != null;
+        if (favouritesCursor.getCount() > 0) {
+            detailsBinding.tbFavourites.setChecked(true);
+            favouritesCursor.close();
+        }
         detailsBinding.tbFavourites.setBackgroundDrawable(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_favorite_border_black_24dp));
         detailsBinding.tbFavourites.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -191,10 +211,12 @@ public class DetailsActivity extends AppCompatActivity implements TrailerAdapter
 
                 if (isChecked) {
                     detailsBinding.tbFavourites.setBackgroundDrawable(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_favorite_black_24dp));
-                    insertMovieToFavourites();
+             insertMovieToFavourites();
+
                 }
                 else {
                     detailsBinding.tbFavourites.setBackgroundDrawable(ContextCompat.getDrawable(getApplicationContext(), R.drawable.ic_favorite_border_black_24dp));
+                    deleteMovieFromFavourites();
                 }
             }
         });
@@ -241,17 +263,27 @@ public class DetailsActivity extends AppCompatActivity implements TrailerAdapter
 
     }
 
+    //Method to insert movie data to data base
     private void insertMovieToFavourites() {
-        // Create a ContentValues object where column names are the keys and selected movie attributes are the values.
+
+        // Create a ContentValues object where column names are the keys and selected movie attributes are the values
         ContentValues movieValues = new ContentValues();
         movieValues.put(MovieEntry.COLUMN_MOVIE_ID, selectedMovie.getId());
+        Log.e(LOG_TAG, "This is the movie id:");
         movieValues.put(MovieEntry.COLUMN_MOVIE_ORIGINAL_TITLE, selectedMovie.getOriginalTitle());
+        Log.e(LOG_TAG, "This is the movie original title:");
         movieValues.put(MovieEntry.COLUMN_MOVIE_TITLE, selectedMovie.getTitle());
+        Log.e(LOG_TAG, "This is the movie title:");
         movieValues.put(MovieEntry.COLUMN_MOVIE_OVERVIEW, selectedMovie.getOverview());
+        Log.e(LOG_TAG, "This is the movie overview:");
         movieValues.put(MovieEntry.COLUMN_MOVIE_BACKDROP_URL, selectedMovie.getBackdropUrl());
+        Log.e(LOG_TAG, "This is the movie backdrop url:");
         movieValues.put(MovieEntry.COLUMN_MOVIE_POSTER_URL, selectedMovie.getPosterUrl());
+        Log.e(LOG_TAG, "This is the movie poster url");
         movieValues.put(MovieEntry.COLUMN_MOVIE_VOTE_AVERAGE, selectedMovie.getVoteAverage());
+        Log.e(LOG_TAG, "This is the movie vote average:");
         movieValues.put(MovieEntry.COLUMN_MOVIE_RELEASE_DATE, selectedMovie.getReleaseDate());
+        Log.e(LOG_TAG, "This is the movie release date:");
 
 
         // Insert a new row for selected movie into the provider using the ContentResolver.
@@ -259,10 +291,32 @@ public class DetailsActivity extends AppCompatActivity implements TrailerAdapter
         // into the movies database table.
         // Receive the new content URI that will allow us to access selected movie data in the future.
        Uri newUri = getContentResolver().insert(MovieEntry.CONTENT_URI, movieValues);
+
+       if (newUri == null) {
+           // If the new content URI is null, then there was an error with adding movie to favourites
+           Toast.makeText(this, getString(R.string.details_add_movie_failed),
+                   Toast.LENGTH_SHORT).show();
+       }  else {
+        // Otherwise, adding movie to favourites was successful
+        Toast.makeText(this, selectedMovie.getTitle() + " " + getString(R.string.details_add_movie_successful),
+                Toast.LENGTH_SHORT).show();
+
+    }
     }
 
     private void deleteMovieFromFavourites() {
+        int rowsDeleted = getContentResolver().delete(MovieEntry.CONTENT_URI, (MovieEntry.COLUMN_MOVIE_ID + "=" + selectedMovie.getId()), null);
+        Log.v("DetailsActivity", rowsDeleted + " rows deleted from movies database");
 
+        if (rowsDeleted == 0) {
+            // If no rows were deleted, then there was an error with removing movie from favourites.
+            Toast.makeText(this, getString(R.string.details_remove_movie_failed),
+                    Toast.LENGTH_SHORT).show();
+        } else {
+            // Otherwise, the delete was successful and we can display a toast.
+            Toast.makeText(this, selectedMovie.getTitle() + " " + getString(R.string.details_remove_movie_successful),
+                    Toast.LENGTH_SHORT).show();
+        }
     }
 
 
@@ -287,6 +341,8 @@ public class DetailsActivity extends AppCompatActivity implements TrailerAdapter
         super.onSaveInstanceState(savedInstanceState);
     }
 
+
+
     //https://stackoverflow.com/questions/574195/android-youtube-app-play-video-intent
     @Override
     public void onClick(Trailer trailer) {
@@ -303,9 +359,7 @@ public class DetailsActivity extends AppCompatActivity implements TrailerAdapter
         }
     }
 
+
     }
-
-
-
 
 

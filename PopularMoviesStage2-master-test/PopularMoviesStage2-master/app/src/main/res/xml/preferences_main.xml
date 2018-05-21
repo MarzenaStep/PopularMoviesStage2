@@ -3,10 +3,10 @@
     android:title="@string/manifest_settings_activity">
 
     <ListPreference
-        android:defaultValue="@string/settings_sort_order_by_default"
+        android:defaultValue="@string/preferences_sort_order_by_default"
         android:entries="@array/settings_sort_order_by_labels"
         android:entryValues="@array/settings_sort_order_by_values"
-        android:key="@string/settings_sort_order_key"
-        android:title="@string/settings_sort_order_label" />
+        android:key="@string/preferences_sort_order_key"
+        android:title="@string/preferences_sort_order_label" />
 
 </PreferenceScreen>

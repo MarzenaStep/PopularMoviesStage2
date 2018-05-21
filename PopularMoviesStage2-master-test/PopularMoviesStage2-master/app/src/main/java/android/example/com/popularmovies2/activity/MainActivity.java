@@ -2,22 +2,25 @@ package android.example.com.popularmovies2.activity;
 
 import android.app.LoaderManager;
 import android.content.Context;
+import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.Loader;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
+import android.database.Cursor;
 import android.databinding.DataBindingUtil;
 import android.example.com.popularmovies2.BuildConfig;
 import android.example.com.popularmovies2.R;
 import android.example.com.popularmovies2.adapter.MovieAdapter;
+import android.example.com.popularmovies2.data.MovieContract.MovieEntry;
+import android.example.com.popularmovies2.databinding.ActivityMainBinding;
 import android.example.com.popularmovies2.loader.MovieLoader;
 import android.example.com.popularmovies2.object.Movie;
-import android.example.com.popularmovies2.databinding.ActivityMainBinding;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.support.v7.widget.GridLayoutManager;
 import android.util.Log;
 import android.view.Menu;
@@ -28,32 +31,186 @@ import android.view.View;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity  extends AppCompatActivity implements LoaderManager.LoaderCallbacks<List<Movie>>, SharedPreferences.OnSharedPreferenceChangeListener, MovieAdapter.PosterAdapterOnClickHandler {
 
-        //Tag for logging. It's best to use the class's name using getSimpleName as it helps to identify the location from which logs are being posted.
-        public static final String LOG_TAG = MainActivity.class.getSimpleName();
+public class MainActivity  extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener, MovieAdapter.PosterAdapterOnClickHandler {
 
-        private static final String API_KEY = BuildConfig.MY_MOVIE_DB_API_KEY;
+    //Tag for logging. It's best to use the class's name using getSimpleName as it helps to identify the location from which logs are being posted.
+    public static final String LOG_TAG = MainActivity.class.getSimpleName();
 
-        //URL for movie data sorted by popularity key
-        public static final String POPULAR_URL = "https://api.themoviedb.org/3/movie/popular?api_key=" + API_KEY;
+    private static final String API_KEY = BuildConfig.MY_MOVIE_DB_API_KEY;
 
-        //URL for movie data sorted by top rated key
-        public static final String TOP_RATED_URL = "https://api.themoviedb.org/3/movie/top_rated?api_key=" + API_KEY;
+    //URL for movie data sorted by popularity key
+    public static final String POPULAR_URL = "https://api.themoviedb.org/3/movie/popular?api_key=" + API_KEY;
 
-        // This constant String will be used to store movies list
-        private static final String MOVIES_KEY = "movies";
+    //URL for movie data sorted by top rated key
+    public static final String TOP_RATED_URL = "https://api.themoviedb.org/3/movie/top_rated?api_key=" + API_KEY;
 
-        // Constant value for the movie loader ID. It can be any integer.
-        private static final int MOVIE_LOADER_ID = 1;
+    // This constant String will be used to store movies list
+    private static final String MOVIES_KEY = "movies";
 
-        private MovieAdapter movieAdapter;
-        private GridLayoutManager layoutManager;
-        private ActivityMainBinding mainBinding;
-        private ArrayList<Movie> moviesList;
+    // Constant value for the movie loader ID. It can be any integer.
+    public static final int INTERNET_MOVIE_LOADER_ID = 1;
+
+    //Constant value for the favourites loader ID
+    public static final int DATABASE_FAVOURITE_LOADER_ID = 2;
+
+    private MovieAdapter movieAdapter;
+    private GridLayoutManager layoutManager;
+    private ActivityMainBinding mainBinding;
+    private ArrayList<Movie> moviesList = new ArrayList<>();
+    private static boolean PREFERENCES_HAVE_BEEN_UPDATED = false;
+    private Movie movie;
 
 
-        private static boolean PREFERENCES_UPDATED = false;
+
+
+    // FAVOURITES_MOVIES_PROJECTION defines the columns from the table that will be returned for each row
+    String[] FAVOURITES_MOVIES_PROJECTION = {
+            MovieEntry._ID,
+            MovieEntry.COLUMN_MOVIE_BACKDROP_URL,
+            MovieEntry.COLUMN_MOVIE_ID,
+            MovieEntry.COLUMN_MOVIE_ORIGINAL_TITLE,
+            MovieEntry.COLUMN_MOVIE_OVERVIEW,
+            MovieEntry.COLUMN_MOVIE_POSTER_URL,
+            MovieEntry.COLUMN_MOVIE_RELEASE_DATE,
+            MovieEntry.COLUMN_MOVIE_TITLE,
+            MovieEntry.COLUMN_MOVIE_VOTE_AVERAGE};
+
+
+    //https://stackoverflow.com/questions/15414206/use-different-asynctask-loaders-in-one-activity
+    private class MovieCallback implements LoaderManager.LoaderCallbacks<List<Movie>> {
+
+        @Override
+        public Loader<List<Movie>> onCreateLoader(int loaderId, Bundle bundle) {
+            // Create a new loader for the given URL
+            Log.i(LOG_TAG, "TEST: onCreateLoader() called ...");
+
+            mainBinding.ivNoMovies.setVisibility(View.INVISIBLE);
+
+            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+            String keyForSortOrder = getApplicationContext().getString(R.string.preferences_sort_order_key);
+            String defaultSortOrder = getApplicationContext().getString(R.string.preferences_sort_order_by_default);
+            String preferredSortOrder = sharedPref.getString(keyForSortOrder, defaultSortOrder);
+            String popular = getApplicationContext().getString(R.string.preferences_sort_order_by_default);
+
+
+            if (popular.equals(preferredSortOrder)) {
+                layoutManager.scrollToPosition(0);
+                setTitle(getString(R.string.preferences_most_popular_label));
+                return new MovieLoader(getApplicationContext(), POPULAR_URL);
+            }
+
+            else  {
+                layoutManager.scrollToPosition(0);
+                setTitle(getString(R.string.preferences_top_rated_label));
+                return new MovieLoader(getApplicationContext(), TOP_RATED_URL);
+            }
+
+        }
+
+        @Override
+        public void onLoadFinished(Loader<List<Movie>> loader, List<Movie> movies) {
+
+            Log.i(LOG_TAG, "TEST: onLoadFinished() called ...");
+
+            // Hide loading indicator and errorMessageTv because the data has been loaded
+            mainBinding.pbLoadingIndicator.setVisibility(View.GONE);
+            mainBinding.tvErrorMessage.setVisibility(View.INVISIBLE);
+            mainBinding.ivNoMovies.setVisibility(View.INVISIBLE);
+
+            //Clear out existing data
+            movieAdapter.clearMovieList();
+
+
+            //If there is a valid list of {@link Movie}s, then add them to the adapter's data set otherwise display error message - no movies found
+            if (movies != null && !movies.isEmpty()) {
+                movieAdapter.updateMoveList(movies);
+            } else {
+                mainBinding.tvErrorMessage.setVisibility(View.VISIBLE);
+                mainBinding.tvErrorMessage.setText(R.string.no_movies);
+                mainBinding.ivNoMovies.setVisibility(View.VISIBLE);
+            }
+
+        }
+
+        @Override
+        public void onLoaderReset(Loader<List<Movie>> loader) {
+
+            Log.i(LOG_TAG, "TEST: onLoaderReset() called ...");
+            // Clear out existing data
+            movieAdapter.clearMovieList();
+
+        }
+    }
+
+    private class FavouritesCallback implements LoaderManager.LoaderCallbacks<Cursor> {
+        @Override
+        public Loader<Cursor> onCreateLoader(int loaderId, Bundle bundle) {
+
+            // This loader will execute the ContentProvider's query method on a background thread
+            return new CursorLoader(getApplicationContext(),    // Parent activity context
+                    MovieEntry.CONTENT_URI,                     // Provider content URI to query
+                    FAVOURITES_MOVIES_PROJECTION,               // Columns to include in the resulting Cursor
+                    null,                              // No selection clause
+                    null,                          // No selection arguments
+                    null);                            // Default sort order
+        }
+
+        @Override
+        public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
+            // Update {@link MovieAdapter} with this new cursor containing updated favourites movies data
+            movieAdapter.swapCursor(cursor);
+
+            cursor = getApplicationContext().getContentResolver().query(MovieEntry.CONTENT_URI,
+                    FAVOURITES_MOVIES_PROJECTION, null, null, null);
+
+            // Find the columns of movies attributes that we're interested in
+            int idColumnIndex = cursor.getColumnIndex(MovieEntry._ID);
+            int movieIdColumnIndex = cursor.getColumnIndex(MovieEntry.COLUMN_MOVIE_ID);
+            int backdropColumnIndex = cursor.getColumnIndex(MovieEntry.COLUMN_MOVIE_BACKDROP_URL);
+            int originalTitleColumnIndex = cursor.getColumnIndex(MovieEntry.COLUMN_MOVIE_ORIGINAL_TITLE);
+            int overviewColumnIndex = cursor.getColumnIndex(MovieEntry.COLUMN_MOVIE_OVERVIEW);
+            int posterUrlColumnIndex = cursor.getColumnIndex(MovieEntry.COLUMN_MOVIE_POSTER_URL);
+            int releaseDateColumnIndex = cursor.getColumnIndex(MovieEntry.COLUMN_MOVIE_RELEASE_DATE);
+            int titleColumnIndex = cursor.getColumnIndex(MovieEntry.COLUMN_MOVIE_TITLE);
+            int voteAverageColumnIndex = cursor.getColumnIndex(MovieEntry.COLUMN_MOVIE_VOTE_AVERAGE);
+
+
+            // Bail early if the cursor is null or there is less than 1 row in the cursor
+            if (cursor == null || cursor.getCount() < 1) {
+                return;
+            }
+
+            else {
+                    while (cursor.moveToNext()) {
+                        // Extract out the value from the Cursor for the given column index
+                        int id = cursor.getInt(idColumnIndex);
+                        int movieId = cursor.getInt(movieIdColumnIndex);
+                        String backdrop = cursor.getString(backdropColumnIndex);
+                        String originalTitle = cursor.getString(originalTitleColumnIndex);
+                        String overview = cursor.getString(overviewColumnIndex);
+                        String posterUrl = cursor.getString(posterUrlColumnIndex);
+                        String releaseDate = cursor.getString(releaseDateColumnIndex);
+                        String title = cursor.getString(titleColumnIndex);
+                        double voteAverage = cursor.getDouble(voteAverageColumnIndex);
+                        Log.v("Cursor", movieId + "-" + backdrop + "-" + originalTitle  + "-" + overview + "-" + posterUrl + "-" + releaseDate + "-" + title + "-" + voteAverage);
+
+                        movie = new Movie(title, originalTitle, releaseDate, posterUrl, backdrop, voteAverage, overview, movieId);
+                        moviesList.add(movie);
+
+                    }
+                }
+
+        }
+
+
+
+        @Override
+        public void onLoaderReset(Loader<Cursor> loader) {
+            // Callback called when the data needs to be deleted
+            movieAdapter.swapCursor(null);
+        }
+    }
 
 
         @Override
@@ -113,78 +270,21 @@ public class MainActivity  extends AppCompatActivity implements LoaderManager.Lo
                 Log.i(LOG_TAG, "TEST: calling initLoader() ...");
 
                 // Initialize the loader
-                loaderManager.initLoader(MOVIE_LOADER_ID, null, this);
+                loaderManager.initLoader(INTERNET_MOVIE_LOADER_ID, null, new MovieCallback());
 
             } else {
                 // Hide loading indicator and display error message - no internet connection
                 mainBinding.pbLoadingIndicator.setVisibility(View.GONE);
                 mainBinding.tvErrorMessage.setText(R.string.no_internet_connection);
+
             }
+
 
             PreferenceManager.getDefaultSharedPreferences(this).registerOnSharedPreferenceChangeListener(this);
 
         }
 
-        @Override
-        public Loader<List<Movie>> onCreateLoader(int loaderId, Bundle bundle) {
-            // Create a new loader for the given URL
-            Log.i(LOG_TAG, "TEST: onCreateLoader() called ...");
 
-            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-            String keyForSortOrder = this.getString(R.string.settings_sort_order_key);
-            String defaultSortOrder = this.getString(R.string.settings_sort_order_by_default);
-            String preferredSortOrder = sharedPref.getString(keyForSortOrder, defaultSortOrder);
-
-            boolean userPrefersPopular = false;
-            if (defaultSortOrder.equals(preferredSortOrder)) {
-                layoutManager.scrollToPosition(0);
-                setTitle(getString(R.string.settings_most_popular_label));
-                return new MovieLoader(this, POPULAR_URL);
-            }
-
-            if (userPrefersPopular == false) {
-                layoutManager.scrollToPosition(0);
-                setTitle(getString(R.string.settings_top_rated_label));
-                return new MovieLoader(this, TOP_RATED_URL);
-
-            }
-            return null;
-
-        }
-
-        @Override
-        public void onLoadFinished(Loader<List<Movie>> loader, List<Movie> movies) {
-
-            Log.i(LOG_TAG, "TEST: onLoadFinished() called ...");
-
-            // Hide loading indicator and errorMessageTv because the data has been loaded
-            mainBinding.pbLoadingIndicator.setVisibility(View.GONE);
-            mainBinding.tvErrorMessage.setVisibility(View.INVISIBLE);
-
-            //Clear out existing data
-            movieAdapter.clearMovieList();
-
-
-
-            //If there is a valid list of {@link Movie}s, then add them to the adapter's data set otherwise display error message - no movies found
-            if (movies != null && !movies.isEmpty()) {
-                movieAdapter.updateMoveList(movies);
-            }
-            else {
-                mainBinding.tvErrorMessage.setVisibility(View.VISIBLE);
-                mainBinding.tvErrorMessage.setText(R.string.no_movies);
-            }
-
-
-        }
-
-        @Override
-        public void onLoaderReset(Loader<List<Movie>> loader) {
-
-            Log.i(LOG_TAG, "TEST: onLoaderReset() called ...");
-            // Clear out existing data
-            movieAdapter.clearMovieList();
-        }
 
         @Override
         public boolean onCreateOptionsMenu(Menu menu) {
@@ -210,10 +310,15 @@ public class MainActivity  extends AppCompatActivity implements LoaderManager.Lo
         protected void onStart() {
             super.onStart();
 
-            if (PREFERENCES_UPDATED) {
-                getLoaderManager().restartLoader(MOVIE_LOADER_ID, null, this);
-                PREFERENCES_UPDATED = false;
+            if (PREFERENCES_HAVE_BEEN_UPDATED) {
+                getLoaderManager().restartLoader(INTERNET_MOVIE_LOADER_ID, null, new MovieCallback());
+                PREFERENCES_HAVE_BEEN_UPDATED = false;
             }
+        }
+        @Override
+        protected void onResume() {
+            super.onResume();
+            //getLoaderManager().initLoader(DATABASE_FAVOURITE_LOADER_ID, null, new FavouritesCallback());
         }
 
         @Override
@@ -224,8 +329,20 @@ public class MainActivity  extends AppCompatActivity implements LoaderManager.Lo
 
         @Override
         public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-            PREFERENCES_UPDATED = true;
 
+            String preference = PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
+                    .getString(getString(R.string.preferences_sort_order_key), getString(R.string.preferences_sort_order_by_default));
+            String favourite = getApplicationContext().getString(R.string.preferences_favourites_value);
+
+            if (preference.equals(favourite)) {
+                //if loader already exist, appropriately use restartLoader instead
+                setTitle(getString(R.string.preferences_favourites_label));
+                getLoaderManager().restartLoader(DATABASE_FAVOURITE_LOADER_ID, null, new FavouritesCallback());
+            }else{
+                //existing implementation for "Popular" and "top rated"
+                //as mentioned, you need to explicitly define the callback, so do that as well.
+                getLoaderManager().restartLoader(INTERNET_MOVIE_LOADER_ID, null, new MovieCallback());
+            }
         }
     
     //This method is for responding to clicks from movie list
@@ -240,7 +357,7 @@ public class MainActivity  extends AppCompatActivity implements LoaderManager.Lo
     @Override
     protected void onSaveInstanceState(Bundle savedInstanceState) {
             savedInstanceState.putParcelableArrayList(MOVIES_KEY, moviesList);
-        super.onSaveInstanceState(savedInstanceState);
+            super.onSaveInstanceState(savedInstanceState);
     }
 }
 

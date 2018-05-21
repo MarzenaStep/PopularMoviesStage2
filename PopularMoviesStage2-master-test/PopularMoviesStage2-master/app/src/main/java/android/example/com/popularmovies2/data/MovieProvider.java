@@ -108,8 +108,8 @@ public class MovieProvider extends ContentProvider {
             default: throw new IllegalArgumentException("Cannot query unknown URI " + uri);
         }
 
-        // Set notification URI on the Cursor, so we know what content URI the Cursor was created for.
-        // If the data at this URI changes, then we know we need to update the Cursor.
+        // Set notification URI on the Cursor to know what content URI the Cursor was created for.
+        // If the data at this URI changes, then we need to update the Cursor.
         cursor.setNotificationUri(getContext().getContentResolver(), uri);
 
         // Return the cursor

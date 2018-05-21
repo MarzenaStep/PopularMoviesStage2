@@ -1,6 +1,7 @@
 package android.example.com.popularmovies2.adapter;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.example.com.popularmovies2.object.Movie;
 import android.example.com.popularmovies2.R;
 import android.support.v7.widget.RecyclerView;
@@ -18,8 +19,10 @@ import java.util.List;
 
 //Creating basic adapter which extends from RecycleView.Adapter
 public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.PosterAdapterViewHolder>  {
+
     private final Context mContext;
     private List<Movie> mPosterList;
+    private Cursor mCursor;
     //Defining ClickHandler member variable
     final private PosterAdapterOnClickHandler mClickHandler;
 
@@ -42,6 +45,21 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.PosterAdapte
     public void updateMoveList(List<Movie> movies) {
         mPosterList = movies;
         notifyDataSetChanged();
+    }
+    /**
+     * Swaps the cursor used by the MovieAdapter for its favourites movies data. This method is called by
+     * MainActivity after a load has finished, as well as when the Loader responsible for loading
+     * the favourites movies data is reset. When this method is called, we assume we have a completely new
+     * set of data, so we call notifyDataSetChanged to tell the RecyclerView to update.
+     *
+     * @param newCursor the new cursor to use as MovieAdapter's data source
+     */
+    public void swapCursor(Cursor newCursor) {
+        if (mCursor != null) mCursor.close();
+        mCursor = newCursor;
+        if (newCursor != null) {
+            this.notifyDataSetChanged();
+        }
     }
 
     // Inflating a layout from XML and returning new holder

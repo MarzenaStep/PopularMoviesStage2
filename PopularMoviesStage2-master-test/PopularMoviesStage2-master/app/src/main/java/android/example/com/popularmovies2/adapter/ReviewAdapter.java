@@ -11,6 +11,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import java.util.List;
+
 public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewAdapterViewHolder> {
     private static final String LOG_TAG = ReviewAdapter.class.getSimpleName();
     private final Context mContext;

@@ -43,12 +43,13 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
             android:layout_marginStart="8dp"
+            android:layout_marginTop="8dp"
             android:paddingRight="8dp"
             android:textAppearance="@style/TextAppearance.AppCompat.Large"
             app:layout_constraintEnd_toStartOf="@+id/vertical_guideline_right"
-            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintHorizontal_bias="0.062"
             app:layout_constraintStart_toEndOf="@+id/iv_poster"
-            app:layout_constraintTop_toTopOf="@+id/iv_poster"
+            app:layout_constraintTop_toBottomOf="@+id/tb_favourites"
             tools:text="Beauty and the beast" />
 
         <TextView
@@ -183,23 +184,6 @@
             android:orientation="vertical"
             app:layout_constraintGuide_percent="0.98" />
 
-        <android.support.design.widget.FloatingActionButton
-            android:id="@+id/floatingActionButton2"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"
-            android:clickable="true"
-            android:scaleType="center"
-            app:backgroundTint="@color/white"
-            app:borderWidth="0dp"
-            app:elevation="6dp"
-            app:fabSize="mini"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/iv_poster"
-            app:layout_constraintTop_toBottomOf="@+id/tv_votes_average"
-            app:srcCompat="@drawable/ic_action_red_heart" />
 
         <ToggleButton
             android:id="@+id/tb_favourites"
@@ -208,13 +192,14 @@
             android:layout_marginBottom="8dp"
             android:layout_marginEnd="8dp"
             android:layout_marginStart="8dp"
-            android:layout_marginTop="8dp"
             android:textOff=""
             android:textOn=""
-            app:layout_constraintBottom_toBottomOf="@+id/iv_poster"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/iv_poster"
-            app:layout_constraintTop_toBottomOf="@+id/floatingActionButton2" />
+            app:layout_constraintBottom_toTopOf="@+id/iv_poster"
+            app:layout_constraintEnd_toStartOf="@+id/vertical_guideline_right"
+            app:layout_constraintHorizontal_bias="1.0"
+            app:layout_constraintStart_toStartOf="@+id/tv_original_title"
+            app:layout_constraintTop_toBottomOf="@+id/iv_background"
+            app:layout_constraintVertical_bias="0.0" />
 
 
     </android.support.constraint.ConstraintLayout>
